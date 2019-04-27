@@ -1,2 +1,2 @@
 # pico-game
-First attempt at making a game using PICO-8.
+My first attempt at making a game using PICO-8.
