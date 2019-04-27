@@ -58,7 +58,7 @@ volume 256
 
 
 // Location of pico-8's root folder
-root_path E:/SandBox/PICO-8/carts/
+root_path E:/SandBox/pico-game/carts/
 
 
 // Location of cartridge save data
