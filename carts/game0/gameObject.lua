@@ -3,8 +3,9 @@
 -- Author: Jeremy Kings
 
 -- Dependencies
---require("vec2") -- vec2
+require("vec2") -- vec2
 local collision = require("collision") -- collisionMapRect
+local globals = require("globals") -- pixelsPerUnit
 
 -- Class definition
 gameObject = 
@@ -84,6 +85,6 @@ end
 
 -- draw object's sprite
 function gameObject:Draw()
-	local spritePosition = self.position:times(8):minus(vec2:new(4,4))
+	local spritePosition = self.position:minus(vec2:new(0.5,0.5)):times(globals.pixelsPerUnit)
 	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y)
 end
