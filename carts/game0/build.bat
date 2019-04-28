@@ -8,7 +8,7 @@ echo Attempting to build cartridge %cartName%
 set luaSource="game0.lua"
 echo Lua Source: %luaSource%
 
-set assetsSource="../demos/collide.p8"
+set assetsSource="game0.p8"
 echo Assets Source: %assetsSource%
 
 :: Attempt to build

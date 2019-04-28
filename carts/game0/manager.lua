@@ -5,20 +5,23 @@
 -- Dependencies
 require("gameObject") -- gameObjectMove, gameObjectDraw
 
-local manager =
-{
-	-- Array of all objects in world
-	objects = {},
+local manager = {}
 
-	update = function()
-		for go in all(objects) do
-			gameObjectUpdate(go, objects)
-		end
-	end,
+-- Array of all objects in world
+manager.objects = {}
 
-	draw = function()
-		foreach(objects, gameObjectDraw)
-	end,
-}
+function manager.add(go)
+	add(manager.objects, go)
+end
+
+function manager.update()
+	for go in all(manager.objects) do
+		gameObject.Update(go, manager.objects)
+	end
+end
+
+function manager.draw()
+	foreach(manager.objects, gameObject.Draw)
+end
 
 return manager

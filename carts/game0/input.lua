@@ -6,12 +6,11 @@
 --require("")
 
 -- Consts
-local keys = 
-{
-	left = 0,
-	right = 1,
-	up = 2,
-	down = 3,
-}
+local keys = {}
+
+keys.left = 0
+keys.right = 1
+keys.up = 2
+keys.down = 3
 
 return keys

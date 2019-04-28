@@ -8,146 +8,89 @@ package._c["gameObject"]=function()
 -- Author: Jeremy Kings
 
 -- Dependencies
-require("vec2") -- vec2
-collision = require("collision") -- collisionMapRect
+--require("vec2") -- vec2
+local collision = require("collision") -- collisionMapRect
 
--- Construct a game object
-function gameObjectCreate(position, sprite)
-	go = {}
-	
+-- Class definition
+gameObject = 
+{
 	-- Transform
-	go.position = position
-	go.extents = vec2(0.4,0.4)
+	position = vec2:new(0,0),
+	extents = vec2:new(0.3,0.4),
 	
 	-- sprite
-	go.sprite = sprite
-	go.frameCurr = 0
-	go.frameCount = 2
+	sprite = 0,
+	frameCurr = 0,
+	frameCount = 2,
 	
 	-- physics
-	go.velocity = vec2(0,0)
-	go.inertia = 0.6
-	go.gravity = 0.1
+	velocity = vec2:new(0,0),
+	inertia = 0.6,
+	gravity = 0.1,
 	
 	-- collision
-	go.t = 0
-	go.bounce = 1
-	
-	-- add to manager
-	add(objects, go)
+	grounded = false,
+	t = 0,
+	bounce = 1,
+}
 
+-- Constructor
+function gameObject:new(go)
+	go = go or {}
+	setmetatable(go, self)
+	self.__index = self
 	return go
 end
 
 -- Move and animate an object
-function gameObjectUpdate(go, objects)
+function gameObject:Update(objects)
 	-- PHYSICS
 	-- only move object along x
 	-- if the resulting position
 	-- will not overlap with an object
-	if not collision.checkAll(go, vec2(go.velocity.x, 0), objects) then
-		go.position.x += go.velocity.x
+	if not collision.checkAll(self, vec2:new(self.velocity.x, 0), objects) then
+		self.position.x += self.velocity.x
 	else   
 		-- otherwise bounce
-		go.velocity.x *= -go.bounce
-		sfx(2)
+		self.velocity.x *= -self.bounce
+		--sfx(2)
 	end
 
 	-- ditto for y
-	if not collision.checkAll(go, vec2(0, go.velocity.y), objects) then
-		go.position.y += go.velocity.y
+	if not collision.checkAll(self, vec2:new(0, self.velocity.y), objects) then
+		self.position.y += self.velocity.y
 	else
-		go.velocity.y *= -go.bounce
+		self.velocity.y *= -self.bounce
 	end
 
 	-- apply inertia
 	-- set dx,dy to zero if you
 	-- don't want inertia
-	go.velocity = vec2Scale(go.velocity, go.inertia)
+	self.velocity = self.velocity:times(self.inertia)
 	
 	-- apply gravity
-	go.velocity.y += go.gravity
+	self.grounded = collision.checkMapPoint(vec2:new(self.position.x, self.position.y + 0.5))
+	if not grounded then
+		self.velocity.y += self.gravity
+	end
 
 	-- ANIMATION
 	-- advance one frame every
 	-- time actor moves 1/4 of
 	-- a tile
-	go.frameCurr += abs(go.velocity.x) * 4
-	go.frameCurr += abs(go.velocity.y) * 4
-	go.frameCurr %= go.frameCount
-
-	go.t += 1
- 
+	self.frameCurr += abs(self.velocity.x) * 4
+	self.frameCurr += abs(self.velocity.y) * 4
+	self.frameCurr %= self.frameCount
+	
+	-- What is this for???
+	self.t += 1
+	
 end
 
 -- draw object's sprite
-function gameObjectDraw(go)
-	local position = vec2Sub(vec2Scale(go.position, 8), vec2(4,4))
-	spr(go.sprite + go.frameCurr, position.x, position.y)
-end
-end
-package._c["vec2"]=function()
--- Filename: vec2.lua
--- Purpose: 2D vector functions
--- Author: Jeremy Kings
-
--- Dependencies
--- require("")
-
--- Constructor
--- Params:
---  x,y - x and y of vector
-function vec2(x, y)
-	v = {}
-	v.x = x
-	v.y = y
-	return v
-end
-
--- Operators
-function vec2Add(v0, v1)
-	vr = vec2(0,0)
-	vr.x = v0.x + v1.x
-	vr.y = v0.y + v1.y
-	return vr
-end
-
-function vec2Sub(v0, v1)
-	vr = vec2(0,0)
-	vr.x = v0.x - v1.x
-	vr.y = v0.y - v1.y
-	return vr
-end
-
-function vec2Scale(v, s)
-	vr = vec2(0,0)
-	vr.x = v.x * s
-	vr.y = v.y * s
-	return vr
-end
-
-function vec2Dot(v0, v1)
-	fr = 0.0
-	fr = v0.x * v1.x + v0.y * v1.y
-	return fr
-end
-	
-function vec2LenSq(v)
-	fr = 0.0
-	fr = v.x * v.x + v.y * v.y
-	return fr
-end
-
-function vec2Len(v)
-	return sqrt(vec2LenSq(v))
-end
-
-function vec2DistSq(v0,v1)
-	return vec2LenSq(vec2Sub(v0,v1))
-end
-
-function vec2Dist(v0,v1)
-	return sqrt(vec2DistSq(v0,v1))
+function gameObject:Draw()
+	local spritePosition = self.position:times(8):minus(vec2:new(4,4))
+	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y)
 end
 end
 package._c["collision"]=function()
@@ -158,90 +101,156 @@ package._c["collision"]=function()
 -- Dependencies
 require("vec2") -- vec2
 
-local collision =
-{
-	-- for any given point on the map, true if there is a wall
-	checkMapPoint = function(position)
+local collision = {}
 
-		-- grab the cell value
-		val = mget(position.x, position.y)
+-- for any given point on the map, true if there is a wall
+function collision.checkMapPoint(position)
 
-		-- check if flag 1 is set (the
-		-- orange toggle button in the 
-		-- sprite editor)
-		return fget(val, 1)
-	 
-	end,
+	-- grab the cell value
+	val = mget(position.x, position.y)
 
-	-- check if a rectangle overlaps with any walls
-	--(only works for objects less than one tile big)
-	checkMapRect = function(position, extents)
-		return 
-			checkMapPoint(vec2Sub(position, extents)) or
-			checkMapPoint(vec2(position.x + extents.x, position.y - extents.y)) or
-			checkMapPoint(vec2(position.x - extents.x, position.y + extents.y)) or
-			checkMapPoint(vec2Add(position, extents))
-	end,
+	-- check if flag 1 is set (the
+	-- orange toggle button in the 
+	-- sprite editor)
+	return fget(val, 1)
+ 
+end
 
-	-- true if go will hit another
-	-- object after moving a specific amount
-	checkObject = function(go1, moveAmount, go2)
+-- check if a rectangle overlaps with any walls
+--(only works for objects less than one tile big)
+function collision.checkMapRect(position, extents)
+	return
+		collision.checkMapPoint(position:minus(extents)) or
+		collision.checkMapPoint(vec2:new(position.x + extents.x, position.y - extents.y)) or
+		collision.checkMapPoint(vec2:new(position.x - extents.x, position.y + extents.y)) or
+		collision.checkMapPoint(position:plus(extents))
+end
 
-		local diffStart = vec2Sub(go1.position, go2.position)
-		local diffEnd = vec2Sub(vec2Add(go1.position, moveAmount), go2.position)
-		local extSum = vec2Add(go1.extents, go2.extents)
-		
-		if ((abs(diffEnd.x) < extSum.x) and (abs(diffEnd.y) < extSum.y)) then
-			local velSum = vec2Add(go1.velocity, go2.velocity)
+-- true if go will hit another
+-- object after moving a specific amount
+function collision.checkObject(go1, moveAmount, go2)
 
-			-- moving together?
-			-- this allows actors to
-			-- overlap initially 
-			-- without sticking together    
-			if (moveAmount.x != 0 and abs(diffEnd.x) < abs(diffStart.x)) then
-				v = velSum.x
-				go1.velocity.x = v / 2
-				go2.velocity.x = v / 2
-				return true 
-			end
+	local diffStart = go1.position:minus(go2.position)
+	local diffEnd = go1.position:plus(moveAmount):minus(go2.position)
+	local extSum = go1.extents:plus(go2.extents)
+	
+	if ((abs(diffEnd.x) < extSum.x) and (abs(diffEnd.y) < extSum.y)) then
+		local velSum = go1.velocity:plus(go2.velocity)
 
-			if (moveAmount.y != 0 and abs(diffEnd.y) < abs(diffStart.y)) then
-				v = velSum.y
-				go1.velocity.y = v / 2
-				go2.velocity.y = v / 2
-				return true 
-			end
-
-		--return true
-		end
-		
-		return false
-	end,
-
-	-- check collision against all other objects
-	checkObjectList = function(go1, moveAmount, objects)
-		for go2 in all(objects) do
-			if (go2 != go1) then
-				if checkObject(go1, moveAmount, go2) then
-					return true
-				end
-			end
-		end
-		
-		return false
-	end,
-
-	-- check map and object collisions
-	checkAll = function(go, moveAmount, objects)
-		if checkMapRect(vec2Add(go.position, moveAmount), go.extents) then
+		-- moving together?
+		-- this allows actors to
+		-- overlap initially 
+		-- without sticking together    
+		if (moveAmount.x != 0 and abs(diffEnd.x) < abs(diffStart.x)) then
+			v = velSum.x
+			go1.velocity.x = v / 2
+			go2.velocity.x = v / 2
 			return true 
 		end
-		
-		return checkObjectList(go, moveAmount, objects)
-	end,
-}
+
+		if (moveAmount.y != 0 and abs(diffEnd.y) < abs(diffStart.y)) then
+			v = velSum.y
+			go1.velocity.y = v / 2
+			go2.velocity.y = v / 2
+			return true 
+		end
+
+		return true
+	end
+	
+	return false
+end
+
+-- check collision against all other objects
+function collision.checkObjectList(go1, moveAmount, objects)
+	for go2 in all(objects) do
+		if (go2 != go1) then
+			if collision.checkObject(go1, moveAmount, go2) then
+				return true
+			end
+		end
+	end
+	
+	return false
+end
+
+-- check map and object collisions
+function collision.checkAll(go, moveAmount, objects)
+	if collision.checkMapRect(go.position:plus(moveAmount), go.extents) then
+		return true 
+	end
+	
+	return collision.checkObjectList(go, moveAmount, objects)
+end
 
 return collision
+end
+package._c["vec2"]=function()
+-- Filename: vec2.lua
+-- Purpose: 2D vector functions
+-- Author: Jeremy Kings
+
+-- Dependencies
+-- require("")
+
+-- Class definition
+vec2 =
+{
+	x = 0,
+	y = 0,
+}
+
+-- Constructor
+function vec2:new(x, y)
+	v = {}
+	setmetatable(v, self)
+	self.__index = self
+	v.x = x
+	v.y = y
+	return v
+end
+
+-- Operators
+function vec2:plus(v1)
+	vr = vec2:new(0,0)
+	vr.x = self.x + v1.x
+	vr.y = self.y + v1.y
+	return vr
+end
+
+function vec2:minus(v1)
+	vr = vec2:new(0,0)
+	vr.x = self.x - v1.x
+	vr.y = self.y - v1.y
+	return vr
+end
+
+function vec2:times(s)
+	vr = vec2:new(0,0)
+	vr.x = self.x * s
+	vr.y = self.y * s
+	return vr
+end
+
+function vec2:dot(v1)
+	return self.x * v1.x + self.y * v1.y
+end
+	
+function vec2:lenSq()
+	return self.x * self.x + self.y * self.y
+end
+
+function vec2:len()
+	return sqrt(self:lenSq())
+end
+
+function vec2:distSq(v1)
+	return self:lenSq(self:sub(v1))
+end
+
+function vec2:dist(v1)
+	return sqrt(self:distSq(v1))
+end
 end
 package._c["manager"]=function()
 -- Filename: manager.lua
@@ -251,21 +260,24 @@ package._c["manager"]=function()
 -- Dependencies
 require("gameObject") -- gameObjectMove, gameObjectDraw
 
-local manager =
-{
-	-- Array of all objects in world
-	objects = {},
+local manager = {}
 
-	update = function()
-		for go in all(objects) do
-			gameObjectUpdate(go, objects)
-		end
-	end,
+-- Array of all objects in world
+manager.objects = {}
 
-	draw = function()
-		foreach(objects, gameObjectDraw)
-	end,
-}
+function manager.add(go)
+	add(manager.objects, go)
+end
+
+function manager.update()
+	for go in all(manager.objects) do
+		gameObject.Update(go, manager.objects)
+	end
+end
+
+function manager.draw()
+	foreach(manager.objects, gameObject.Draw)
+end
 
 return manager
 end
@@ -278,13 +290,12 @@ package._c["input"]=function()
 --require("")
 
 -- Consts
-local keys = 
-{
-	left = 0,
-	right = 1,
-	up = 2,
-	down = 3,
-}
+local keys = {}
+
+keys.left = 0
+keys.right = 1
+keys.up = 2
+keys.down = 3
 
 return keys
 end
@@ -300,30 +311,30 @@ end
 
 -- Dependencies
 require("gameObject") -- create
-manager = require("manager") -- update, draw
-keys = require("input") -- keys
+local manager = require("manager") -- update, draw
+local keys = require("input") -- keys
 
 -- Player controller
 function playerUpdate()
 
 	-- how fast to accelerate
 	local accel = 0.1
-	if (btn(keys.left)) then 
-		pl.velocity.x -= accel 
+	if btn(keys.left) then 
+		player.velocity.x -= accel 
 	end
-	if (btn(keys.right)) then 
-		pl.velocity.x += accel 
+	if btn(keys.right) then 
+		player.velocity.x += accel 
 	end
-	if (btn(keys.up)) then 
-		pl.velocity.y -= accel 
-	end
-	if (btn(keys.down)) then 
-		pl.velocity.y += accel 
+	
+	-- jump
+	local jump = -1.5
+	if btnp(keys.up) and player.grounded then 
+		player.velocity.y += jump
 	end
 
 	-- play a sound if moving
 	-- (every 4 ticks)
-	if (abs(pl.velocity.x) + abs(pl.velocity.y) > 0.1 and (pl.t % 4) == 0) then
+	if abs(player.velocity.x) + abs(player.velocity.y) > 0.1 and (player.t % 4) == 0 then
 		sfx(1)
 	end
 	
@@ -332,24 +343,44 @@ end
 -- Initialize
 function _init()
 	-- make player top left
-	pl = gameObjectCreate(vec2(2, 2), 17)
+	player = gameObject:new
+	{
+		position = vec2:new(2, 2), 
+		sprite = 17,
+	}
+	manager.add(player)
 
 	-- make a bouncy ball
-	local ball = gameObjectCreate(vec2(8.5, 7.5), 33)
-	ball.velocity = vec2(0.05, 0.1)
-	ball.inertia = 0.5
+	local ball = gameObject:new
+	{
+		position = vec2:new(8.5, 7.5), 
+		sprite = 33,
+		velocity = vec2:new(0.05, 0.1),
+		inertia = 0.5,
+	}
+	manager.add(ball)
 
 	-- make non-bouncy ball
-	local ball = gameObjectCreate(vec2(7, 5), 49)
-	ball.velocity = vec2(-0.1, 0.15)
-	ball.inertia=1
-	ball.bounce = 0.8
+	local ball = gameObject:new
+	{
+		position = vec2:new(7, 5), 
+		sprite = 49,
+		velocity = vec2:new(-0.1, 0.15),
+		inertia = 1,
+		bounce = 0.8,
+	}
+	manager.add(ball)
 
 	-- tiny guy
-	local a = gameObjectCreate(vec2(7, 5), 5)
-	a.frameCount = 4
-	a.velocity = vec2(1/8,0)
-	a.inertia=0.8
+	local a = gameObject:new
+	{
+		position = vec2:new(8, 5), 
+		sprite = 5,
+		frameCount = 4,
+		velocity = vec2:new(1/8,0),
+		inertia = 0.8,
+	}
+	manager.add(a)
 	
 end
 
@@ -365,8 +396,8 @@ function _draw()
 	map(0,0,0,0,16,16)
 	manager.draw()
 
-	print("x "..pl.position.x, 0, 120, 7)
-	print("y "..pl.position.y, 64, 120, 7)
+	print("x "..player.position.x, 0, 120, 7)
+	print("y "..player.position.y, 64, 120, 7)
 end
 __gfx__
 000000003bbbbbb7dccccc770cccccc00000000000ccc70000ccc70000ccc70000ccc70000000000000000000000000000000000000000000000000000000000
