@@ -2,24 +2,24 @@
 setlocal
 
 :: Set up source variables
-set cartName="game0.p8"
+set cartName="game0_map.p8"
 echo Attempting to build cartridge %cartName%
 
-set luaSource="game0.lua"
-echo Lua Source: %luaSource%
+::set luaSource="game0.lua"
+::echo Lua Source: %luaSource%
 
 set artSource="game0_art.p8"
 echo Art Source: %artSource%
 
-set soundSource="game0_sound.p8"
-echo Sound Source: %soundSource%
+::set soundSource="game0_sound.p8"
+::echo Sound Source: %soundSource%
 
 set mapSource="game0_map.p8"
 echo Map Source: %mapSource%
 
 :: Attempt to build
 @echo on
-py ../../tools/p8tool/p8tool.py build %cartName% --gfx %artSource% --gff %mapSource% --sfx %soundSource% --music %soundSource% --map %mapSource% --lua %luaSource%
+py ../../tools/p8tool/p8tool.py build %cartName% --gfx %artSource% --gff %mapSource% --empty-sfx --empty-music --map %mapSource% --empty-lua
 @echo off
 
 if errorlevel 1 (
