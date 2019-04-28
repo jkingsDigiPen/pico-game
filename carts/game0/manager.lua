@@ -16,12 +16,12 @@ end
 
 function manager.update()
 	for go in all(manager.objects) do
-		gameObject.Update(go, manager.objects)
+		gameObject.update(go, manager.objects)
 	end
 end
 
 function manager.draw()
-	foreach(manager.objects, gameObject.Draw)
+	foreach(manager.objects, gameObject.draw)
 end
 
 return manager

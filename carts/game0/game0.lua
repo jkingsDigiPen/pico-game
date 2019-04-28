@@ -10,9 +10,9 @@ local globals = require("globals") -- pixelsPerUnit, viewportWidth, mapWidth, ma
 
 -- Player controller
 function playerUpdate()
-
+	-- MOVEMENT
 	-- How fast to pick up speed
-	local accel = 0.1
+	local accel = 0.05
 	-- Less control in air
 	if not player.grounded then 
 		accel *= 0.5 
@@ -26,18 +26,34 @@ function playerUpdate()
 	end
 	
 	-- jump
-	local jump = -1.5
+	local jump = -1.0
 	if btnp(keys.up) and player.grounded then 
 		player.velocity.y += jump
 	end
-
-	-- play a sound if moving
-	-- (every 4 ticks)
-	if abs(player.velocity.x) + abs(player.velocity.y) 
-			> 0.1 and (player.t % 4) == 0 then
-		sfx(1)
-	end
 	
+	-- ANIMATION
+	if player.grounded then
+		-- Walking animation
+		-- advance one frame every 0.5 units
+		if abs(player.velocity.x) > 0.1 then
+			player.frameCurr += abs(player.velocity.x) * 2
+			player.frameCurr %= player.frameCount
+		-- Idle animation (advance every 32 ticks)
+		elseif ((player.t % 32) == 0) then
+			if(player.frameCurr == 0) then
+				player.frameCurr = 2
+			else
+				player.frameCurr = 0
+			end
+		end
+		
+		-- play a sound if moving
+		-- (every 8 ticks)
+		if abs(player.velocity.x) + abs(player.velocity.y) 
+				> 0.1 and (player.t % 8) == 0 then
+			sfx(1)
+		end
+	end
 end
 
 function cameraUpdate()
@@ -59,38 +75,9 @@ function _init()
 		sprite = 17,
 	}
 	manager.add(player)
-
-	-- make a bouncy ball
-	--[[local ball = gameObject:new
-	{
-		position = vec2:new(8.5, 7.5), 
-		sprite = 33,
-		velocity = vec2:new(0.05, 0.1),
-		inertia = 0.5,
-	}
-	manager.add(ball)
-
-	-- make non-bouncy ball
-	local ball = gameObject:new
-	{
-		position = vec2:new(7, 5), 
-		sprite = 49,
-		velocity = vec2:new(-0.1, 0.15),
-		inertia = 1,
-		bounce = 0.8,
-	}
-	manager.add(ball)
-
-	-- tiny guy
-	local a = gameObject:new
-	{
-		position = vec2:new(8, 5), 
-		sprite = 5,
-		frameCount = 4,
-		velocity = vec2:new(1/8,0),
-		inertia = 0.8,
-	}
-	manager.add(a)]]
+	
+	-- play level music
+	music(0)
 	
 end
 
