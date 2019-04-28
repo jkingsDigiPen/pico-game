@@ -9,15 +9,15 @@ package._c["gameObject"]=function()
 
 -- Dependencies
 require("vec2") -- vec2
-local collision = require("collision") -- collisionMapRect
-local globals = require("globals") -- pixelsPerUnit
+collision = require("collision") -- collisionMapRect
+globals = require("globals") -- pixelsPerUnit
 
 -- Class definition
 gameObject = 
 {
 	-- Transform
 	position = vec2:new(0,0),
-	extents = vec2:new(0.3,0.4),
+	extents = vec2:new(0.4,0.4),
 	
 	-- sprite
 	sprite = 0,
@@ -28,12 +28,19 @@ gameObject =
 	-- physics
 	velocity = vec2:new(0,0),
 	inertia = 0.9,
-	gravity = 0.1,
+	gravity = 0.05,
 	
 	-- collision
+	flags = 
+	{
+		bottom = false,
+		top = false,
+		left = false,
+		right = false,
+	},
 	grounded = false,
 	t = 0,
-	bounce = 1,
+	bounce = 0.8,
 }
 
 -- Constructor
@@ -46,126 +53,77 @@ end
 
 -- Move and animate an object
 function gameObject:update(objects)
-	-- ANIMATION
-	-- Flip if going other direction
-	if abs(self.velocity.x) > 0.1 then
-		if self.velocity.x < 0 and not self.flipX then 
-			self.flipX = true
-		elseif self.velocity.x > 0 and self.flipX then 
-			self.flipX = false
-		end
-	end
+	-- Initialize variables
+	local nudgeAmount = 0.55
+	local locations =
+	{
+		bottom = 0,
+		top = 0,
+		left = 0,
+		right = 0,
+	}
 	
-	-- PHYSICS
-	-- only move object along x
-	-- if the resulting position
-	-- will not overlap with an object
-	if not collision.checkAll(self, vec2:new(self.velocity.x, 0), objects) then
-		self.position.x += self.velocity.x
-	else   
+	-- JUMP
+	if collision.checkMapRect(self.position:plus(vec2:new(0,nudgeAmount)), self.extents, locations)
+	then
+		self.grounded = true
+	else
+		self.grounded = false
+	end
+
+	-- COLLISIONS
+	self.flags.bottom = false
+	self.flags.top = false
+	self.flags.left = false
+	self.flags.right = false
+	
+	-- only move object along x if the resulting position will not overlap with an object
+	local velocityX = vec2:new(self.velocity.x, 0)
+	if collision.checkAll(self, velocityX, locations, objects) then
+		if self.velocity.x < 0 then
+			self.flags.left = true
+			self.position.x = locations.left + self.extents.x + nudgeAmount
+		elseif self.velocity.x > 0 then
+			self.flags.right = true
+			self.position.x = locations.right - self.extents.x - nudgeAmount
+		end
+	
 		-- otherwise bounce
 		self.velocity.x *= -self.bounce
 		--sfx(2)
+	else
+		-- Move x as normal
+		self.position.x += self.velocity.x
 	end
 
-	-- ditto for y
-	--[[if not collision.checkAll(self, vec2:new(0, self.velocity.y), objects) then
-		self.position.y += self.velocity.y
-	else
+	-- Ditto for y
+	local velocityY = vec2:new(0, self.velocity.y)
+	if collision.checkAll(self, velocityY, locations, objects) then
+		if self.velocity.y < 0 then
+			self.flags.top = true
+			self.position.y = locations.top + self.extents.y + nudgeAmount
+		elseif self.velocity.y > 0 then
+			self.flags.bottom = true
+			self.grounded = true
+			self.position.y = locations.bottom - self.extents.y - nudgeAmount
+		end
+	
 		self.velocity.y *= -self.bounce
-	end
-
-	-- apply inertia
-	-- set dx,dy to zero if you
-	-- don't want inertia
-	self.velocity = self.velocity:times(self.inertia)
-	
-	-- apply gravity
-	self.grounded = collision.checkMapPoint(vec2:new(self.position.x, self.position.y + 0.5))
-	if not grounded then
-		self.velocity.y += self.gravity
-	end]]
-	
-	-- y movement
-	
-	-- going up
-	local yMove = vec2:new(0, self.velocity.y)
-	local halfExtent = self.extents.x / 2
-	local quarterExtent = self.extents.x / 4
-	local nudgeDown = 0.01
-	local nudgeUp = 0.05
-	
-	if (self.velocity.y < 0) then
-		local leftUp = self.position:plus(vec2:new(-halfExtent, -1))
-		local rightUp = self.position:plus(vec2:new(halfExtent, -1))
-		
-		if collision.checkMapPoint(rightUp:plus(yMove)) or 
-				collision.checkMapPoint(leftUp:plus(yMove)) 
-		then
-			-- Stop y movement
-			self.velocity.y = 0
-	 
-			-- search up for collision point
-			while not collision.checkMapPoint(leftUp) or
-				collision.checkMapPoint(rightUp)
-			do
-				self.position.y -= nudgeDown
-				leftUp = self.position:plus(vec2:new(-halfExtent, -1))
-				rightUp = self.position:plus(vec2:new(halfExtent, -1))
-			end
-
-		else
-			self.position.y += self.velocity.y
-		end
-	-- going down
 	else
-		local leftDown = self.position:plus(vec2:new(-halfExtent, 0))
-		local rightDown = self.position:plus(vec2:new(halfExtent, 0))
-	
-		if collision.checkMapPoint(rightDown:plus(yMove)) or 
-				collision.checkMapPoint(leftDown:plus(yMove)) 
-		then
-			-- bounce
-			if self.bounce > 0 and self.velocity.y > halfExtent then
-				self.velocity.y -= self.bounce
-			else
-				self.grounded = true
-				self.velocity.y = 0
-			end
-
-		--snap down
-		while not collision.checkMapPoint(leftDown) or
-			collision.checkMapPoint(rightDown)
-		do 
-			self.position.y += nudgeUp
-			leftDown = self.position:plus(vec2:new(-halfExtent, 0))
-			rightDown = self.position:plus(vec2:new(halfExtent, 0))
-		end
-
-		--pop up even if bouncing
-		while collision.checkMapPoint(leftDown:plus(vec2:new(0, -quarterExtent))) do
-			self.position.y -= nudgeUp
-			leftDown = self.position:plus(vec2:new(-halfExtent, 0))
-		end
-		while collision.checkMapPoint(rightDown:plus(vec2:new(0, -quarterExtent))) do
-			self.position.y -= nudgeUp
-			rightDown = self.position:plus(vec2:new(halfExtent, 0))
-		end
-
-		else
-			self.position.y += self.velocity.y 
-		end
+		-- Move y as normal
+		self.position.y += self.velocity.y
 	end
- 
-	-- gravity and friction
+	
+	-- Gravity
 	self.velocity.y += self.gravity
-	self.velocity.y *= self.inertia + 0.05
-
-	-- x friction
-	if self.grounded then
-		self.velocity.x *= self.inertia - 0.1
+	
+	-- FORCES
+	if not self.grounded then
+		-- Inertia
+		self.velocity = self.velocity:times(self.inertia)
 	else
-		self.velocity.x *= self.inertia
+		-- Inertia: more on ground
+		self.velocity = self.velocity:times(self.inertia - 0.2)
 	end
 	
 	-- Timer???
@@ -175,7 +133,7 @@ end
 
 -- draw object's sprite
 function gameObject:draw()
-	local spritePosition = self.position:minus(vec2:new(0.5,0.5)):times(globals.pixelsPerUnit)
+	local spritePosition = self.position:times(globals.pixelsPerUnit)
 	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y, 1, 1, self.flipX)
 end
 end
@@ -206,44 +164,44 @@ end
 
 -- Operators
 function vec2:plus(v1)
-	vr = vec2:new(0,0)
-	vr.x = self.x + v1.x
-	vr.y = self.y + v1.y
-	return vr
+	return vec2:new(self.x + v1.x, self.y + v1.y)
 end
 
 function vec2:minus(v1)
-	vr = vec2:new(0,0)
-	vr.x = self.x - v1.x
-	vr.y = self.y - v1.y
-	return vr
+	return vec2:new(self.x - v1.x, self.y - v1.y)
 end
 
 function vec2:times(s)
-	vr = vec2:new(0,0)
-	vr.x = self.x * s
-	vr.y = self.y * s
-	return vr
+	return vec2:new(self.x * s, self.y * s)
+end
+
+function vec2:negated()
+	return vec2:new(-self.x, -self.y)
 end
 
 function vec2:dot(v1)
 	return self.x * v1.x + self.y * v1.y
 end
 	
-function vec2:lenSq()
+function vec2:lengthSquared()
 	return self.x * self.x + self.y * self.y
 end
 
-function vec2:len()
-	return sqrt(self:lenSq())
+function vec2:length()
+	return sqrt(self:lengthSquared())
 end
 
-function vec2:distSq(v1)
-	return self:lenSq(self:sub(v1))
+function vec2:distanceSquared(v1)
+	return self:minus(v1):lengthSquared()
 end
 
-function vec2:dist(v1)
-	return sqrt(self:distSq(v1))
+function vec2:distance(v1)
+	return sqrt(self:distanceSquared(v1))
+end
+
+function vec2:normalized()
+	local length = self:length()
+	return vec2:new(self.x / length, self.y / length) 
 end
 end
 package._c["collision"]=function()
@@ -269,14 +227,35 @@ function collision.checkMapPoint(position)
  
 end
 
--- check if a rectangle overlaps with any walls
---(only works for objects less than one tile big)
-function collision.checkMapRect(position, extents)
-	return
-		collision.checkMapPoint(position:minus(extents)) or
-		collision.checkMapPoint(vec2:new(position.x + extents.x, position.y - extents.y)) or
-		collision.checkMapPoint(vec2:new(position.x - extents.x, position.y + extents.y)) or
-		collision.checkMapPoint(position:plus(extents))
+-- Check if a rectangle overlaps with any walls)
+function collision.checkMapRect(position, extents, locations)
+	-- Initialize variables
+	local result = false
+	local infinity = 32000
+	locations.left=infinity
+	locations.right=-infinity
+	locations.top=infinity
+	locations.bottom=-infinity
+	
+	-- Calculate sides of rectangle
+	local rectLeft = flr(position.x - extents.x + 0.5)
+	local rectRight = flr(position.x + extents.x + 0.5)
+	local rectTop = flr(position.y - extents.y + 0.5)
+	local rectBottom = flr(position.y + extents.y + 0.5)
+	
+	-- Determine collision locations
+  for i = rectLeft, rectRight do
+		for j = rectTop, rectBottom do
+			if fget(mget(i,j), 1) then
+				locations.left = i < locations.left and i or locations.left
+				locations.right = i > locations.right and i or locations.right
+				locations.top = j < locations.top and j or locations.top
+				locations.bottom = j > locations.bottom and j or locations.bottom
+				result = true
+			end
+		end
+  end
+  return result
 end
 
 -- true if go will hit another
@@ -328,8 +307,8 @@ function collision.checkObjectList(go1, moveAmount, objects)
 end
 
 -- check map and object collisions
-function collision.checkAll(go, moveAmount, objects)
-	if collision.checkMapRect(go.position:plus(moveAmount), go.extents) then
+function collision.checkAll(go, moveAmount, locations, objects)
+	if collision.checkMapRect(go.position:plus(moveAmount), go.extents, locations) then
 		return true 
 	end
 	
@@ -394,14 +373,45 @@ package._c["input"]=function()
 --require("")
 
 -- Consts
-local keys = {}
+local input = {}
 
-keys.left = 0
-keys.right = 1
-keys.up = 2
-keys.down = 3
+input.keyCodes =
+{
+	left = 0,
+	right = 1,
+	up = 2,
+	down = 3,
+}
 
-return keys
+input.keyStates = {}
+
+function input.isHeld(k) return band(input.keyStates[k], 1) == 1 end
+function input.isPressed(k) return band(input.keyStates[k], 2) == 2 end
+function input.isReleased(k) return band(input.keyStates[k], 4) == 4 end
+
+function input.updateKey(k)
+    if input.keyStates[k] == 0 then
+        if btn(k) then input.keyStates[k] = 3 end
+    elseif input.keyStates[k] == 1 then
+        if btn(k) == false then input.keyStates[k] = 4 end
+    elseif input.keyStates[k] == 3 then
+        if btn(k) then input.keyStates[k] = 1
+        else input.keyStates[k] = 4 end
+    elseif input.keyStates[k] == 4 then
+        if btn(k) then input.keyStates[k] = 3
+        else input.keyStates[k] = 0 end
+    end
+end
+
+function input.update()
+	for i = 0,5 do input.updateKey(i) end
+end
+
+function input.init()
+	for i = 0,5 do input.keyStates[i] = 0 end
+end
+
+return input
 end
 function require(p)
 local l=package.loaded
@@ -415,38 +425,41 @@ end
 
 -- Dependencies
 require("gameObject") -- create
-local manager = require("manager") -- update, draw
-local keys = require("input") -- keys
-local globals = require("globals") -- pixelsPerUnit, viewportWidth, mapWidth, mapHeight
+manager = require("manager") -- update, draw
+input = require("input") -- keys
+globals = require("globals") -- pixelsPerUnit, viewportWidth, mapWidth, mapHeight
 
 -- Player controller
 function playerUpdate()
 	-- MOVEMENT
 	-- How fast to pick up speed
-	local accel = 0.05
+	local accel = 0.035
 	-- Less control in air
 	if not player.grounded then 
 		accel *= 0.5 
 	end
 	
-	if btn(keys.left) then 
-		player.velocity.x -= accel 
+	if input.isHeld(input.keyCodes.left) then 
+		player.velocity.x -= accel
+		player.flipX = true
 	end
-	if btn(keys.right) then 
-		player.velocity.x += accel 
+	if input.isHeld(input.keyCodes.right) then 
+		player.velocity.x += accel
+		player.flipX = false
 	end
 	
 	-- jump
-	local jump = -1.0
-	if btnp(keys.up) and player.grounded then 
+	local jump = -0.8
+	if input.isPressed(input.keyCodes.up) and player.grounded then 
 		player.velocity.y += jump
+		player.grounded = false
 	end
 	
 	-- ANIMATION
 	if player.grounded then
 		-- Walking animation
 		-- advance one frame every 0.5 units
-		if abs(player.velocity.x) > 0.1 then
+		if abs(player.velocity.x) >= 0.07 then
 			player.frameCurr += abs(player.velocity.x) * 2
 			player.frameCurr %= player.frameCount
 		-- Idle animation (advance every 32 ticks)
@@ -479,11 +492,14 @@ end
 
 -- Initialize
 function _init()
+	input.init()
+
 	-- make player top left
 	player = gameObject:new
 	{
-		position = vec2:new(2, 2), 
+		position = vec2:new(6, 2), 
 		sprite = 17,
+		bounce = 0,
 	}
 	manager.add(player)
 	
@@ -497,13 +513,18 @@ function guiDraw()
 	camera(0, 0)
 	print("x "..player.position.x, 0, 120, 7)
 	print("y "..player.position.y, 64, 120, 7)
+	print("dx "..player.velocity.x, 0, 110, 7)
+	print("dy "..player.velocity.y, 64, 110, 7)
+	local b = player.flags.bottom and 1 or 0
+	print("b "..b, 0, 100, 7)
 end
 
 -- Update
 function _update()
- playerUpdate()
- manager.update()
- cameraUpdate()
+	input.update()
+	playerUpdate()
+	manager.update()
+	cameraUpdate()
 end
 
 -- Draw

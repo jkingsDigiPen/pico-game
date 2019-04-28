@@ -24,42 +24,42 @@ end
 
 -- Operators
 function vec2:plus(v1)
-	vr = vec2:new(0,0)
-	vr.x = self.x + v1.x
-	vr.y = self.y + v1.y
-	return vr
+	return vec2:new(self.x + v1.x, self.y + v1.y)
 end
 
 function vec2:minus(v1)
-	vr = vec2:new(0,0)
-	vr.x = self.x - v1.x
-	vr.y = self.y - v1.y
-	return vr
+	return vec2:new(self.x - v1.x, self.y - v1.y)
 end
 
 function vec2:times(s)
-	vr = vec2:new(0,0)
-	vr.x = self.x * s
-	vr.y = self.y * s
-	return vr
+	return vec2:new(self.x * s, self.y * s)
+end
+
+function vec2:negated()
+	return vec2:new(-self.x, -self.y)
 end
 
 function vec2:dot(v1)
 	return self.x * v1.x + self.y * v1.y
 end
 	
-function vec2:lenSq()
+function vec2:lengthSquared()
 	return self.x * self.x + self.y * self.y
 end
 
-function vec2:len()
-	return sqrt(self:lenSq())
+function vec2:length()
+	return sqrt(self:lengthSquared())
 end
 
-function vec2:distSq(v1)
-	return self:lenSq(self:sub(v1))
+function vec2:distanceSquared(v1)
+	return self:minus(v1):lengthSquared()
 end
 
-function vec2:dist(v1)
-	return sqrt(self:distSq(v1))
+function vec2:distance(v1)
+	return sqrt(self:distanceSquared(v1))
+end
+
+function vec2:normalized()
+	local length = self:length()
+	return vec2:new(self.x / length, self.y / length) 
 end

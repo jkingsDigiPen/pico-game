@@ -20,14 +20,35 @@ function collision.checkMapPoint(position)
  
 end
 
--- check if a rectangle overlaps with any walls
---(only works for objects less than one tile big)
-function collision.checkMapRect(position, extents)
-	return
-		collision.checkMapPoint(position:minus(extents)) or
-		collision.checkMapPoint(vec2:new(position.x + extents.x, position.y - extents.y)) or
-		collision.checkMapPoint(vec2:new(position.x - extents.x, position.y + extents.y)) or
-		collision.checkMapPoint(position:plus(extents))
+-- Check if a rectangle overlaps with any walls)
+function collision.checkMapRect(position, extents, locations)
+	-- Initialize variables
+	local result = false
+	local infinity = 32000
+	locations.left=infinity
+	locations.right=-infinity
+	locations.top=infinity
+	locations.bottom=-infinity
+	
+	-- Calculate sides of rectangle
+	local rectLeft = flr(position.x - extents.x + 0.5)
+	local rectRight = flr(position.x + extents.x + 0.5)
+	local rectTop = flr(position.y - extents.y + 0.5)
+	local rectBottom = flr(position.y + extents.y + 0.5)
+	
+	-- Determine collision locations
+  for i = rectLeft, rectRight do
+		for j = rectTop, rectBottom do
+			if fget(mget(i,j), 1) then
+				locations.left = i < locations.left and i or locations.left
+				locations.right = i > locations.right and i or locations.right
+				locations.top = j < locations.top and j or locations.top
+				locations.bottom = j > locations.bottom and j or locations.bottom
+				result = true
+			end
+		end
+  end
+  return result
 end
 
 -- true if go will hit another
@@ -79,8 +100,8 @@ function collision.checkObjectList(go1, moveAmount, objects)
 end
 
 -- check map and object collisions
-function collision.checkAll(go, moveAmount, objects)
-	if collision.checkMapRect(go.position:plus(moveAmount), go.extents) then
+function collision.checkAll(go, moveAmount, locations, objects)
+	if collision.checkMapRect(go.position:plus(moveAmount), go.extents, locations) then
 		return true 
 	end
 	

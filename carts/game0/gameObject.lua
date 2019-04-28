@@ -4,15 +4,15 @@
 
 -- Dependencies
 require("vec2") -- vec2
-local collision = require("collision") -- collisionMapRect
-local globals = require("globals") -- pixelsPerUnit
+collision = require("collision") -- collisionMapRect
+globals = require("globals") -- pixelsPerUnit
 
 -- Class definition
 gameObject = 
 {
 	-- Transform
 	position = vec2:new(0,0),
-	extents = vec2:new(0.3,0.4),
+	extents = vec2:new(0.4,0.4),
 	
 	-- sprite
 	sprite = 0,
@@ -23,12 +23,19 @@ gameObject =
 	-- physics
 	velocity = vec2:new(0,0),
 	inertia = 0.9,
-	gravity = 0.1,
+	gravity = 0.05,
 	
 	-- collision
+	flags = 
+	{
+		bottom = false,
+		top = false,
+		left = false,
+		right = false,
+	},
 	grounded = false,
 	t = 0,
-	bounce = 1,
+	bounce = 0.8,
 }
 
 -- Constructor
@@ -41,125 +48,77 @@ end
 
 -- Move and animate an object
 function gameObject:update(objects)
-	-- ANIMATION
-	-- Flip if going other direction
-	if abs(self.velocity.x) > 0.1 then
-		if self.velocity.x < 0 and not self.flipX then 
-			self.flipX = true
-		elseif self.velocity.x > 0 and self.flipX then 
-			self.flipX = false
-		end
-	end
+	-- Initialize variables
+	local nudgeAmount = 0.55
+	local locations =
+	{
+		bottom = 0,
+		top = 0,
+		left = 0,
+		right = 0,
+	}
 	
-	-- PHYSICS
-	-- only move object along x
-	-- if the resulting position
-	-- will not overlap with an object
-	if not collision.checkAll(self, vec2:new(self.velocity.x, 0), objects) then
-		self.position.x += self.velocity.x
-	else   
+	-- JUMP
+	if collision.checkMapRect(self.position:plus(vec2:new(0,nudgeAmount)), self.extents, locations)
+	then
+		self.grounded = true
+	else
+		self.grounded = false
+	end
+
+	-- COLLISIONS
+	self.flags.bottom = false
+	self.flags.top = false
+	self.flags.left = false
+	self.flags.right = false
+	
+	-- only move object along x if the resulting position will not overlap with an object
+	local velocityX = vec2:new(self.velocity.x, 0)
+	if collision.checkAll(self, velocityX, locations, objects) then
+		if self.velocity.x < 0 then
+			self.flags.left = true
+			self.position.x = locations.left + self.extents.x + nudgeAmount
+		elseif self.velocity.x > 0 then
+			self.flags.right = true
+			self.position.x = locations.right - self.extents.x - nudgeAmount
+		end
+	
 		-- otherwise bounce
 		self.velocity.x *= -self.bounce
 		--sfx(2)
+	else
+		-- Move x as normal
+		self.position.x += self.velocity.x
 	end
 
-	-- ditto for y
-	--[[if not collision.checkAll(self, vec2:new(0, self.velocity.y), objects) then
-		self.position.y += self.velocity.y
-	else
+	-- Ditto for y
+	local velocityY = vec2:new(0, self.velocity.y)
+	if collision.checkAll(self, velocityY, locations, objects) then
+		if self.velocity.y < 0 then
+			self.flags.top = true
+			self.position.y = locations.top + self.extents.y + nudgeAmount
+		elseif self.velocity.y > 0 then
+			self.flags.bottom = true
+			self.grounded = true
+			self.position.y = locations.bottom - self.extents.y - nudgeAmount
+		end
+	
 		self.velocity.y *= -self.bounce
-	end
-
-	-- apply inertia
-	-- set dx,dy to zero if you
-	-- don't want inertia
-	self.velocity = self.velocity:times(self.inertia)
-	
-	-- apply gravity
-	self.grounded = collision.checkMapPoint(vec2:new(self.position.x, self.position.y + 0.5))
-	if not grounded then
-		self.velocity.y += self.gravity
-	end]]
-	
-	-- y movement
-	local yMove = vec2:new(0, self.velocity.y)
-	local halfExtent = self.extents.x / 2
-	local quarterExtent = self.extents.x / 4
-	local nudgeDown = 0.01
-	local nudgeUp = 0.05
-	
-	-- going up
-	if (self.velocity.y < 0) then
-		local leftUp = self.position:plus(vec2:new(-halfExtent, -1))
-		local rightUp = self.position:plus(vec2:new(halfExtent, -1))
-		
-		if collision.checkMapPoint(rightUp:plus(yMove)) or 
-				collision.checkMapPoint(leftUp:plus(yMove)) 
-		then
-			-- Stop y movement
-			self.velocity.y = 0
-	 
-			-- search up for collision point
-			while not collision.checkMapPoint(leftUp) or
-				collision.checkMapPoint(rightUp)
-			do
-				self.position.y -= nudgeDown
-				leftUp = self.position:plus(vec2:new(-halfExtent, -1))
-				rightUp = self.position:plus(vec2:new(halfExtent, -1))
-			end
-
-		else
-			self.position.y += self.velocity.y
-		end
-	-- going down
 	else
-		local leftDown = self.position:plus(vec2:new(-halfExtent, 0))
-		local rightDown = self.position:plus(vec2:new(halfExtent, 0))
-	
-		if collision.checkMapPoint(rightDown:plus(yMove)) or 
-				collision.checkMapPoint(leftDown:plus(yMove)) 
-		then
-			-- bounce
-			if self.bounce > 0 and self.velocity.y > halfExtent then
-				self.velocity.y -= self.bounce
-			else
-				self.grounded = true
-				self.velocity.y = 0
-			end
-
-		--snap down
-		while not collision.checkMapPoint(leftDown) or
-			collision.checkMapPoint(rightDown)
-		do 
-			self.position.y += nudgeUp
-			leftDown = self.position:plus(vec2:new(-halfExtent, 0))
-			rightDown = self.position:plus(vec2:new(halfExtent, 0))
-		end
-
-		--pop up even if bouncing
-		while collision.checkMapPoint(leftDown:plus(vec2:new(0, -quarterExtent))) do
-			self.position.y -= nudgeUp
-			leftDown = self.position:plus(vec2:new(-halfExtent, 0))
-		end
-		while collision.checkMapPoint(rightDown:plus(vec2:new(0, -quarterExtent))) do
-			self.position.y -= nudgeUp
-			rightDown = self.position:plus(vec2:new(halfExtent, 0))
-		end
-
-		else
-			self.position.y += self.velocity.y 
-		end
+		-- Move y as normal
+		self.position.y += self.velocity.y
 	end
- 
-	-- gravity and friction
+	
+	-- Gravity
 	self.velocity.y += self.gravity
-	self.velocity.y *= self.inertia + 0.05
-
-	-- x friction
-	if self.grounded then
-		self.velocity.x *= self.inertia - 0.1
+	
+	-- FORCES
+	if not self.grounded then
+		-- Inertia
+		self.velocity = self.velocity:times(self.inertia)
 	else
-		self.velocity.x *= self.inertia
+		-- Inertia: more on ground
+		self.velocity = self.velocity:times(self.inertia - 0.2)
 	end
 	
 	-- Timer???
@@ -169,6 +128,6 @@ end
 
 -- draw object's sprite
 function gameObject:draw()
-	local spritePosition = self.position:minus(vec2:new(0.5,0.5)):times(globals.pixelsPerUnit)
+	local spritePosition = self.position:times(globals.pixelsPerUnit)
 	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y, 1, 1, self.flipX)
 end
