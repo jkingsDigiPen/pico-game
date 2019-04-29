@@ -29,27 +29,36 @@ Building PICO-8 projects on Windows when using Notepad++:
 			set luaSource="game0.lua"
 			echo Lua Source: %luaSource%
 
-			set assetsSource="../demos/collide.p8"
-			echo Assets Source: %assetsSource%
+			set artSource="game0_art.p8"
+			echo Art Source: %artSource%
+
+			set soundSource="game0_sound.p8"
+			echo Sound Source: %soundSource%
+
+			set mapSource="game0_map.p8"
+			echo Map Source: %mapSource%
 
 			:: Attempt to build
 			@echo on
-			py ../../tools/p8tool/p8tool.py build %cartName% --gfx %assetsSource% --gff %assetsSource% --sfx %assetsSource% --music %assetsSource% --map %assetsSource% --lua %luaSource%
+			py ../../tools/p8tool/p8tool.py build %cartName% --gfx %artSource% --gff %mapSource% --sfx %soundSource% --music %soundSource% --map %mapSource% --lua %luaSource%
 			@echo off
 
 			if errorlevel 1 (
 				echo.
 				echo Build failed. Check p8tool output above for errors.
 			) else (
-				echo Build succeeded! Running PICO-8 with cart.
-				:: Run the cart if build succeeded
-				"C:\Program Files (x86)\PICO-8\pico8.exe" -run %cartName%
+				echo Build succeeded! 
+				if "%1" == "run" (
+					echo Running PICO-8 with cart.
+					:: Run the cart if build succeeded
+					"C:\Program Files (x86)\PICO-8\pico8.exe" -run %cartName%
+				)
 			)
 
 			endlocal
 			@echo on
 
-		(NOTE: If you're using additional carts for sound or art, feel free to create additional variables for those.)
+		(NOTE: If you're not using additional carts for sound or art, feel free to replace those variables.)
 
 	
 3. 

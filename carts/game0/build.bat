@@ -26,9 +26,12 @@ if errorlevel 1 (
 	echo.
 	echo Build failed. Check p8tool output above for errors.
 ) else (
-	echo Build succeeded! Running PICO-8 with cart.
-	:: Run the cart if build succeeded
-	"C:\Program Files (x86)\PICO-8\pico8.exe" -run %cartName%
+	echo Build succeeded! 
+	if "%1" == "run" (
+		echo Running PICO-8 with cart.
+		:: Run the cart if build succeeded
+		"C:\Program Files (x86)\PICO-8\pico8.exe" -run %cartName%
+	)
 )
 
 endlocal
