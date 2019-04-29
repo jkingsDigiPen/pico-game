@@ -67,3 +67,7 @@ function vec2:normalized()
 		return vec2:new(self.x, self.y)
 	end
 end
+
+function vec2:lerp(v1, t)
+	return self:plus(v1:minus(self):times(t))
+end

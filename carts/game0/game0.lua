@@ -18,11 +18,11 @@ function playerUpdate()
 		accel *= 0.5 
 	end
 	
-	if input.isHeld(input.keyCodes.left) then 
+	if input.isHeld(input.keyCodes.left) and cursor.position.x < player.position.x then 
 		player.velocity.x -= accel
 		player.flipX = true
 	end
-	if input.isHeld(input.keyCodes.right) then 
+	if input.isHeld(input.keyCodes.right) and cursor.position.x > player.position.x then 
 		player.velocity.x += accel
 		player.flipX = false
 	end
@@ -59,6 +59,11 @@ function playerUpdate()
 	end
 end
 
+local xMinOffset = 4
+local xMaxOffset = 4
+local yMinOffset = -4
+local yMaxOffset = 2
+
 function cursorUpdate()
 	-- MOVEMENT
 	-- How fast to pick up speed
@@ -88,18 +93,42 @@ function cursorUpdate()
 	
 	-- Update!
 	cursor:update()
+	
+	-- Clamp position to slightly less than map width
+	cursor.position.x = mid(globals.mapOffsetX + xMinOffset, cursor.position.x, 
+		globals.mapOffsetX + globals.mapWidth - xMaxOffset)
+	-- Allow for some breathing room at top of map, less at bottom
+	cursor.position.y = mid(globals.mapOffsetY + yMinOffset, cursor.position.y, 
+		globals.mapOffsetY + globals.mapHeight - yMaxOffset)
 end
 
+local playerStartX = 15
+local playerStartY = 22
+local cursorStartX = 17
+local cursorStartY = 22
+local cameraPosition = vec2:new(playerStartX, playerStartY)
+
 function cameraUpdate()
-	--[[cam_x = mid(globals.mapOffsetX * 4, player.position.x * globals.pixelsPerUnit - (0.5) * globals.viewportWidth, 
-		(globals.mapWidth + globals.mapOffsetX - 3) * 4)]]--
-  cam_y = mid(globals.mapOffsetY * 4, player.position.y * globals.pixelsPerUnit - (0.5) * globals.viewportWidth, 
-		(globals.mapHeight + globals.mapOffsetY - 3) * 4)
+	local nudge = 0.01
+
+	-- lerp towards cursor
+	cameraPosition = cameraPosition:lerp(cursor.position, 0.1)
 	
-	-- fixed camera x
-	cam_x = (globals.mapWidth / 2.0) * globals.pixelsPerUnit - (0.5) * globals.viewportWidth
+	-- clamp to map
+	local viewportWidthWorldHalf = (globals.viewportWidth / 2) / globals.pixelsPerUnit
+	cameraPosition.x = mid(globals.mapOffsetX + viewportWidthWorldHalf + xMinOffset, cameraPosition.x, 
+		globals.mapOffsetX + globals.mapWidth - viewportWidthWorldHalf - xMaxOffset + 1)
 	
-	camera (cam_x,cam_y)
+	-- allow for some breathing room at top of map
+	cameraPosition.y = mid(globals.mapOffsetY + viewportWidthWorldHalf + yMinOffset, cameraPosition.y, 
+		globals.mapOffsetY + globals.mapHeight - viewportWidthWorldHalf - yMaxOffset + 1)
+	
+	-- convert to pixel coords
+	cam_x = cameraPosition.x * globals.pixelsPerUnit - 0.5 * globals.viewportWidth
+	cam_y = cameraPosition.y * globals.pixelsPerUnit - 0.5 * globals.viewportWidth
+	
+	-- set camera
+	camera (cam_x, cam_y)
 end
 
 -- Initialize
@@ -109,7 +138,7 @@ function _init()
 	-- make player
 	player = gameObject:new
 	{
-		position = vec2:new(15, 22), 
+		position = vec2:new(playerStartX, playerStartY), 
 		sprite = 17,
 		bounce = 0,
 		ghostObjects = true,
@@ -119,7 +148,7 @@ function _init()
 	-- make cursor
 	cursor = gameObject:new
 	{
-		position = vec2:new(17, 22),
+		position = vec2:new(cursorStartX, cursorStartY),
 		sprite = 70,
 		ghostMap = true,
 		ghostObjects = true,
@@ -157,7 +186,7 @@ function _draw()
 	
 	-- background color
 	camera(0, 0)
-	rectfill(0,0,127,127,0)
+	rectfill(0, 0, globals.viewportWidth - 1, globals.viewportWidth - 1, 0)
 		
 	-- adjust camera to player
 	cameraUpdate()
