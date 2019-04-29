@@ -36,6 +36,8 @@ gameObject =
 	grounded = false,
 	t = 0,
 	bounce = 0.8,
+	ghostMap = false,
+	ghostObjects = false,
 }
 
 -- Constructor
@@ -48,6 +50,39 @@ end
 
 -- Move and animate an object
 function gameObject:update(objects)
+	
+	-- MOVEMENT
+	if not self.ghostMap and self.ghostObjects then
+		self:checkCollisions(objects)
+	else
+		self.position = self.position:plus(self.velocity)
+	end
+	
+	-- FORCES
+	-- Gravity
+	self.velocity.y += self.gravity
+	
+	if not self.grounded then
+		-- Inertia
+		self.velocity = self.velocity:times(self.inertia)
+	else
+		-- Inertia: more on ground
+		self.velocity = self.velocity:times(self.inertia - 0.2)
+	end
+	
+	-- Timer???
+	self.t += 1
+	
+end
+
+-- draw object's sprite
+function gameObject:draw()
+	local spritePosition = self.position:times(globals.pixelsPerUnit)
+	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y, 1, 1, self.flipX)
+end
+
+-- check and resolve collisions
+function gameObject:checkCollisions(objects)
 	-- Initialize variables
 	local nudgeAmount = 0.55
 	local locations =
@@ -108,26 +143,4 @@ function gameObject:update(objects)
 		-- Move y as normal
 		self.position.y += self.velocity.y
 	end
-	
-	-- Gravity
-	self.velocity.y += self.gravity
-	
-	-- FORCES
-	if not self.grounded then
-		-- Inertia
-		self.velocity = self.velocity:times(self.inertia)
-	else
-		-- Inertia: more on ground
-		self.velocity = self.velocity:times(self.inertia - 0.2)
-	end
-	
-	-- Timer???
-	self.t += 1
-	
-end
-
--- draw object's sprite
-function gameObject:draw()
-	local spritePosition = self.position:times(globals.pixelsPerUnit)
-	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y, 1, 1, self.flipX)
 end
