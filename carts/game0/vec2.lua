@@ -61,5 +61,9 @@ end
 
 function vec2:normalized()
 	local length = self:length()
-	return vec2:new(self.x / length, self.y / length) 
+	if length ~= 0 then
+		return vec2:new(self.x / length, self.y / length)
+	else
+		return vec2:new(self.x, self.y)
+	end
 end
