@@ -180,6 +180,17 @@ function _update()
 	manager.update()
 end
 
+local transparentColor = 0
+function paletteSetTransparentColor(color)
+	palt(transparentColor, false)
+	transparentColor = color
+	palt(transparentColor, true)
+end
+
+function paletteReset()
+    paletteSetTransparentColor(0)
+end
+
 -- Draw
 function _draw()
 	cls()
@@ -192,16 +203,20 @@ function _draw()
 	cameraUpdate()
 	
 	-- background layer
-	map(globals.mapWidth, 0, 0, globals.mapHeight * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
+	map(globals.mapWidth, 0, 0, (globals.mapHeight - 0.5) * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
 	
 	-- object layer
+	paletteSetTransparentColor(15) -- beige is now transparent
 	map(0, globals.mapHeight, 0, globals.mapHeight * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
+	paletteReset() -- default transparency
 	
 	-- game objects
 	manager.draw()
 	
 	-- foreground layer
+	--paletteSetTransparentColor(15) -- beige is now transparent
 	map(0, 0, 0, globals.mapHeight * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
+	--paletteReset() -- default transparency
 	
 	-- cursor object
 	cursor:draw()
