@@ -14,6 +14,8 @@ input.keyCodes =
 	right = 1,
 	up = 2,
 	down = 3,
+	action1 = 4,
+	action2 = 5,
 }
 
 input.keyStates = {}
