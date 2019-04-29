@@ -11,15 +11,15 @@ echo Lua Source: %luaSource%
 set artSource="game0_art.p8"
 echo Art Source: %artSource%
 
-set soundSource="game0_sound.p8"
-echo Sound Source: %soundSource%
-
 set mapSource="game0_map.p8"
 echo Map Source: %mapSource%
 
+set soundSource="game0_sound.p8"
+echo Sound Source: %soundSource%
+
 :: Attempt to build
 @echo on
-py ../../tools/p8tool/p8tool.py build %cartName% --gfx %artSource% --gff %mapSource% --sfx %soundSource% --music %soundSource% --map %mapSource% --lua %luaSource%
+py ../../tools/p8tool/p8tool.py build %cartName% --lua %luaSource% --gfx %artSource% --gff %mapSource% --map %mapSource% --sfx %soundSource% --music %soundSource%
 @echo off
 
 if errorlevel 1 (
