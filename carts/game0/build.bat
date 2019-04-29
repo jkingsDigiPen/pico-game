@@ -2,7 +2,7 @@
 setlocal
 
 :: Set up source variables
-set cartName="game0.p8"
+set cartName="debug/game0.p8"
 echo Attempting to build cartridge %cartName%
 
 set luaSource="game0.lua"

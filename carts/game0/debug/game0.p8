@@ -481,9 +481,6 @@ function playerUpdate()
 		player.grounded = false
 	end]]--
 	
-	-- Keep player y constant for this game
-	--player.position.y = 22
-	
 	-- ANIMATION
 	if player.grounded then
 		-- Walking animation
