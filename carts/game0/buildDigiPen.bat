@@ -19,7 +19,7 @@ echo Sound Source: %soundSource%
 
 :: Attempt to build
 @echo on
-"C:\Users\j.kings\AppData\Local\Programs\Python\Python37-32\python.exe" ../../tools/p8tool/p8tool.py build %cartName% --lua %luaSource% --gfx %artSource% --gff %mapSource% --map %mapSource% --sfx %soundSource% --music %soundSource%
+"C:\Users\j.kings\AppData\Local\Programs\Python\Python37\python.exe" ../../tools/p8tool/p8tool.py build %cartName% --lua %luaSource% --gfx %artSource% --gff %mapSource% --map %mapSource% --sfx %soundSource% --music %soundSource%
 @echo off
 
 if errorlevel 1 (

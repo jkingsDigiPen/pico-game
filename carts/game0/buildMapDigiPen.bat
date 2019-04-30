@@ -19,7 +19,7 @@ echo Map Source: %mapSource%
 
 :: Attempt to build
 @echo on
-"C:\Users\j.kings\AppData\Local\Programs\Python\Python37-32\python.exe" ../../tools/p8tool/p8tool.py build %cartName% --empty-lua --gfx %artSource% --gff %mapSource% --map %mapSource% --empty-sfx --empty-music
+"C:\Users\j.kings\AppData\Local\Programs\Python\Python37\python.exe" ../../tools/p8tool/p8tool.py build %cartName% --empty-lua --gfx %artSource% --gff %mapSource% --map %mapSource% --empty-sfx --empty-music
 @echo off
 
 if errorlevel 1 (
