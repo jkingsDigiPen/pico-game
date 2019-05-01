@@ -206,17 +206,17 @@ function _draw()
 	map(globals.mapWidth, 0, 0, (globals.mapHeight - 0.5) * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
 	
 	-- object layer
-	paletteSetTransparentColor(15) -- beige is now transparent
+	--paletteSetTransparentColor(globals.colors.peach)
 	map(0, globals.mapHeight, 0, globals.mapHeight * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
-	paletteReset() -- default transparency
+	--paletteReset() -- default transparency
 	
 	-- game objects
 	manager.draw()
 	
 	-- foreground layer
-	--paletteSetTransparentColor(15) -- beige is now transparent
+	paletteSetTransparentColor(globals.colors.greenDark)
 	map(0, 0, 0, globals.mapHeight * globals.pixelsPerUnit, globals.mapWidth, globals.mapHeight)
-	--paletteReset() -- default transparency
+	paletteReset() -- default transparency
 	
 	-- cursor object
 	cursor:draw()
