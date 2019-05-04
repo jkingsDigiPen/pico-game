@@ -4,7 +4,6 @@
 
 -- Dependencies
 require("vec2") -- vec2
-collision = require("collision") -- collisionMapRect
 globals = require("globals") -- pixelsPerUnit
 
 -- Class definition
@@ -22,7 +21,7 @@ gameObject =
 	
 	-- physics
 	velocity = vec2:new(0,0),
-	inertia = 0.9,
+	inertia = 0.99,
 	gravity = 0.05,
 	
 	-- collision
@@ -39,6 +38,8 @@ gameObject =
 	ghostObjects = false,
 	
 	-- behavior
+	onUpdate = function(go) end,
+	onCollision = function(go) end,
 	objectType = 0,
 	timer = 0,
 }
@@ -52,96 +53,15 @@ function gameObject:new(go)
 end
 
 -- Move and animate an object
-function gameObject:update(objects)
-	
-	-- MOVEMENT
-	if not self:checkCollisions(objects) then
-		self.position = self.position:plus(self.velocity)
-	end
-	
-	-- FORCES
-	-- Gravity
-	--self.velocity.y += self.gravity
-	
-	if not self.grounded then
-		-- Inertia
-		self.velocity = self.velocity:times(self.inertia)
-	else
-		-- Inertia: more on ground
-		self.velocity = self.velocity:times(self.inertia - 0.2)
-	end
-	
-	-- Timer???
+function gameObject:update()
+	-- Call update function
+	self.onUpdate(self)
+	-- Increase timer
 	self.timer += 1
-	
 end
 
 -- draw object's sprite
 function gameObject:draw()
 	local spritePosition = self.position:times(globals.pixelsPerUnit)
 	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y, 1, 1, self.flipX)
-end
-
--- check and resolve collisions
-function gameObject:checkCollisions(objects)
-	-- Initialize variables
-	local nudgeAmount = 0.55
-	local locations =
-	{
-		bottom = 0,
-		top = 0,
-		left = 0,
-		right = 0,
-	}
-	
-	-- JUMP
-	if collision.checkMapRect(self.position:plus(vec2:new(0,nudgeAmount)), self.extents, locations)
-	then
-		self.grounded = true
-	else
-		self.grounded = false
-	end
-
-	-- COLLISIONS
-	self.flags.bottom = false
-	self.flags.top = false
-	self.flags.left = false
-	self.flags.right = false
-	
-	-- only move object along x if the resulting position will not overlap with an object
-	local velocityX = vec2:new(self.velocity.x, 0)
-	if collision.checkAll(self, velocityX, locations, objects) then
-		if self.velocity.x < 0 then
-			self.flags.left = true
-			self.position.x = locations.left + self.extents.x + nudgeAmount
-		elseif self.velocity.x > 0 then
-			self.flags.right = true
-			self.position.x = locations.right - self.extents.x - nudgeAmount
-		end
-	
-		-- otherwise bounce
-		self.velocity.x *= -self.bounce
-		--sfx(2)
-	else
-		-- Move x as normal
-		self.position.x += self.velocity.x
-	end
-
-	-- Ditto for y
-	--[[local velocityY = vec2:new(0, self.velocity.y)
-	if collision.checkAll(self, velocityY, locations, objects) then
-		if self.velocity.y < 0 then
-			self.flags.top = true
-			self.position.y = locations.top + self.extents.y + nudgeAmount
-		elseif self.velocity.y > 0 then
-			self.flags.bottom = true
-			self.grounded = true
-			self.position.y = locations.bottom - self.extents.y - nudgeAmount
-		end
-	
-		self.velocity.y *= -self.bounce
-	else]]--
-		-- Move y as normal
-		--self.position.y += self.velocity.y
-	end
 end

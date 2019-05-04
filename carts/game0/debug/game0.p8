@@ -9,7 +9,6 @@ package._c["gameObject"]=function()
 
 -- Dependencies
 require("vec2") -- vec2
-collision = require("collision") -- collisionMapRect
 globals = require("globals") -- pixelsPerUnit
 
 -- Class definition
@@ -27,7 +26,7 @@ gameObject =
 	
 	-- physics
 	velocity = vec2:new(0,0),
-	inertia = 0.9,
+	inertia = 0.99,
 	gravity = 0.05,
 	
 	-- collision
@@ -44,6 +43,8 @@ gameObject =
 	ghostObjects = false,
 	
 	-- behavior
+	onUpdate = function(go) end,
+	onCollision = function(go) end,
 	objectType = 0,
 	timer = 0,
 }
@@ -57,28 +58,11 @@ function gameObject:new(go)
 end
 
 -- Move and animate an object
-function gameObject:update(objects)
-	
-	-- MOVEMENT
-	if not self:checkCollisions(objects) then
-		self.position = self.position:plus(self.velocity)
-	end
-	
-	-- FORCES
-	-- Gravity
-	--self.velocity.y += self.gravity
-	
-	if not self.grounded then
-		-- Inertia
-		self.velocity = self.velocity:times(self.inertia)
-	else
-		-- Inertia: more on ground
-		self.velocity = self.velocity:times(self.inertia - 0.2)
-	end
-	
-	-- Timer???
+function gameObject:update()
+	-- Call update function
+	self.onUpdate(self)
+	-- Increase timer
 	self.timer += 1
-	
 end
 
 -- draw object's sprite
@@ -86,69 +70,6 @@ function gameObject:draw()
 	local spritePosition = self.position:times(globals.pixelsPerUnit)
 	spr(self.sprite + self.frameCurr, spritePosition.x, spritePosition.y, 1, 1, self.flipX)
 end
-
--- check and resolve collisions
-function gameObject:checkCollisions(objects)
-	-- Initialize variables
-	local nudgeAmount = 0.55
-	local locations =
-	{
-		bottom = 0,
-		top = 0,
-		left = 0,
-		right = 0,
-	}
-	
-	-- JUMP
-	if collision.checkMapRect(self.position:plus(vec2:new(0,nudgeAmount)), self.extents, locations)
-	then
-		self.grounded = true
-	else
-		self.grounded = false
-	end
-
-	-- COLLISIONS
-	self.flags.bottom = false
-	self.flags.top = false
-	self.flags.left = false
-	self.flags.right = false
-	
-	-- only move object along x if the resulting position will not overlap with an object
-	local velocityX = vec2:new(self.velocity.x, 0)
-	if collision.checkAll(self, velocityX, locations, objects) then
-		if self.velocity.x < 0 then
-			self.flags.left = true
-			self.position.x = locations.left + self.extents.x + nudgeAmount
-		elseif self.velocity.x > 0 then
-			self.flags.right = true
-			self.position.x = locations.right - self.extents.x - nudgeAmount
-		end
-	
-		-- otherwise bounce
-		self.velocity.x *= -self.bounce
-		--sfx(2)
-	else
-		-- Move x as normal
-		self.position.x += self.velocity.x
-	end
-
-	-- Ditto for y
-	--[[local velocityY = vec2:new(0, self.velocity.y)
-	if collision.checkAll(self, velocityY, locations, objects) then
-		if self.velocity.y < 0 then
-			self.flags.top = true
-			self.position.y = locations.top + self.extents.y + nudgeAmount
-		elseif self.velocity.y > 0 then
-			self.flags.bottom = true
-			self.grounded = true
-			self.position.y = locations.bottom - self.extents.y - nudgeAmount
-		end
-	
-		self.velocity.y *= -self.bounce
-	else]]--
-		-- Move y as normal
-		--self.position.y += self.velocity.y
-	end
 end
 package._c["vec2"]=function()
 -- Filename: vec2.lua
@@ -225,9 +146,218 @@ function vec2:lerp(v1, t)
 	return self:plus(v1:minus(self):times(t))
 end
 end
+package._c["globals"]=function()
+-- Filename: globals.lua
+-- Purpose: Define globals
+-- Author: Jeremy Kings
+
+-- Dependencies
+--require("")
+
+-- Consts
+local globals = {}
+
+-- Viewport/screen
+globals.pixelsPerUnit = 8 -- Pixels per unit
+globals.viewportWidth = 128 -- Viewport width in pixels
+
+-- Colors
+globals.colors =
+{
+	black = 0,
+	blueDark = 1,
+	purpleDark = 2,
+	greenDark = 3,
+	brown = 4,
+	grayDark = 5,
+	grayLight = 6,
+	white = 7,
+	red = 8,
+	orange = 9,
+	yellow = 10,
+	green = 11,
+	blue = 12,
+	purpleLight = 13,
+	pink = 14,
+	peach = 15,
+}
+
+-- Map
+globals.map =
+{
+	width = 32, -- Map width in units
+	height = 16, -- Map height in units
+	offsetX = 0, -- Offset of map upper-left in units
+	offsetY = 16, -- Offset of map upper-left in units
+}
+
+-- Sprites
+globals.sprites =
+{
+	player = 17,
+	cursor = 70,
+	fireball = 53,
+	lightning = 0,
+	goblin = 0,
+	imp = 0,
+}
+
+-- Objects
+globals.objectTypes =
+{
+	player = 1,
+	fireball = 2,
+	lightning = 3,
+	goblin = 4,
+	imp = 5,
+}
+
+return globals
+end
+package._c["manager"]=function()
+-- Filename: manager.lua
+-- Purpose: Manage objects
+-- Author: Jeremy Kings
+
+-- Dependencies
+require("gameObject") -- gameObjectMove, gameObjectDraw
+physics = require("physics") -- update
+
+local manager = {}
+
+-- Array of all objects in world
+manager.objects = {}
+
+function manager.add(go)
+	add(manager.objects, go)
+end
+
+function manager.update()
+	foreach(manager.objects, gameObject.update)
+	physics.update(manager.objects)
+end
+
+function manager.draw()
+	foreach(manager.objects, gameObject.draw)
+end
+
+return manager
+end
+package._c["physics"]=function()
+-- Filename: physics.lua
+-- Purpose: Movement of Objects
+-- Author: Jeremy Kings
+
+-- Dependencies
+require("vec2") -- vec2
+collision = require("collision") -- checkAll, checkMapRect
+
+local physics = {}
+
+function physics.update(objects)
+	-- Apply forces
+	for go in all(objects) do
+		-- Gravity
+		go.velocity.y += go.gravity
+		-- Inertia
+		go.velocity = go.velocity:times(go.inertia)
+	end
+
+	-- Check for collisions
+	for go in all(objects) do
+		physics.checkCollision(go, objects)
+	end
+	
+	-- Publish results
+	foreach(objects, physics.publishResults)
+end
+
+-- Check for horizontal and vertical collision
+function physics.checkCollision(go, objects)
+	-- Initialize variables
+	local locations =
+	{
+		bottom = 0,
+		top = 0,
+		left = 0,
+		right = 0,
+	}
+	
+	-- JUMP
+	if collision.checkMapRect(go.position:plus(vec2:new(0,nudgeAmount)), go.extents, locations)
+	then
+		go.grounded = true
+	else
+		go.grounded = false
+	end
+
+	-- COLLISIONS
+	go.flags.bottom = false
+	go.flags.top = false
+	go.flags.left = false
+	go.flags.right = false
+	
+	physics.checkCollisionY(go, locations, objects)
+	physics.checkCollisionX(go, locations, objects)
+end
+
+-- Check for horizontal collision
+function physics.checkCollisionX(go, locations, objects)
+	local nudgeAmount = 0.55
+	local velocityX = vec2:new(go.velocity.x, 0)
+	
+	-- If moving horizontally would overlap with an object
+	if collision.checkAll(go, velocityX, locations, objects) then
+		-- Mark flags and adjust x position and x velocity accordingly
+		if go.velocity.x < 0 then
+			go.flags.left = true
+			go.position.x = locations.left + go.extents.x + nudgeAmount
+		elseif go.velocity.x > 0 then
+			go.flags.right = true
+			go.position.x = locations.right - go.extents.x - nudgeAmount
+		end
+	
+		-- otherwise bounce
+		go.velocity.x *= -go.bounce
+		--sfx(2)
+	end
+end
+
+-- Check for vertical collision
+function physics.checkCollisionY(go, locations, objects)
+	local nudgeAmount = 0.55
+	local velocityY = vec2:new(0, go.velocity.y)
+	
+	-- If moving vertically would overlap with an object
+	if collision.checkAll(go, velocityY, locations, objects) then
+		-- Mark flags and adjust y position and y velocity accordingly
+		if go.velocity.y < 0 then
+			go.flags.top = true
+			go.position.y = locations.top + go.extents.y + nudgeAmount
+		elseif go.velocity.y > 0 then
+			go.flags.bottom = true
+			go.grounded = true
+			go.position.y = locations.bottom - go.extents.y - nudgeAmount
+		end
+	
+		go.velocity.y *= -go.bounce
+	end
+end
+
+-- Update object position
+function physics.publishResults(go)
+	if go.flags.bottom or go.flags.top or go.flags.right or go.flags.left then
+		go.onCollision()
+	end
+	
+	go.position = go.position:plus(go.velocity)
+end
+
+return physics
+end
 package._c["collision"]=function()
 -- Filename: collision.lua
--- Purpose: Collision Detection, Resolution
+-- Purpose: Collision Detection
 -- Author: Jeremy Kings
 
 -- Dependencies
@@ -317,7 +447,7 @@ end
 -- check collision against all other objects
 function collision.checkObjectList(go1, moveAmount, objects)
 	for go2 in all(objects) do
-		if (go2 != go1) then
+		if (go2 != go1) and not go2.ghostObjects then
 			if collision.checkObject(go1, moveAmount, go2) then
 				return true
 			end
@@ -331,11 +461,11 @@ end
 function collision.checkAll(go, moveAmount, locations, objects)
 	local result = false
 
-	--if not go.ghostObjects then
-		--if collision.checkObjectList(go, moveAmount, objects) then
-			--result = true
-		--end
-	--end
+	if not go.ghostObjects then
+		if collision.checkObjectList(go, moveAmount, objects) then
+			result = true
+		end
+	end
 	
 	if not go.ghostMap then 
 		if collision.checkMapRect(go.position:plus(moveAmount), go.extents, locations) then
@@ -347,103 +477,6 @@ function collision.checkAll(go, moveAmount, locations, objects)
 end
 
 return collision
-end
-package._c["globals"]=function()
--- Filename: globals.lua
--- Purpose: Define globals
--- Author: Jeremy Kings
-
--- Dependencies
---require("")
-
--- Consts
-local globals = {}
-
--- Viewport/screen
-globals.pixelsPerUnit = 8 -- Pixels per unit
-globals.viewportWidth = 128 -- Viewport width in pixels
-
--- Colors
-globals.colors =
-{
-	black = 0,
-	blueDark = 1,
-	purpleDark = 2,
-	greenDark = 3,
-	brown = 4,
-	grayDark = 5,
-	grayLight = 6,
-	white = 7,
-	red = 8,
-	orange = 9,
-	yellow = 10,
-	green = 11,
-	blue = 12,
-	purpleLight = 13,
-	pink = 14,
-	peach = 15,
-}
-
--- Map
-globals.map =
-{
-	width = 32, -- Map width in units
-	height = 16, -- Map height in units
-	offsetX = 0, -- Offset of map upper-left in units
-	offsetY = 16, -- Offset of map upper-left in units
-}
-
--- Sprites
-globals.sprites =
-{
-	player = 17,
-	cursor = 70,
-	fireball = 53,
-	lightning = 0,
-	goblin = 0,
-	imp = 0,
-}
-
--- Objects
-globals.objectTypes =
-{
-	player = 1,
-	fireball = 2,
-	lightning = 3,
-	goblin = 4,
-	imp = 5,
-}
-
-return globals
-end
-package._c["manager"]=function()
--- Filename: manager.lua
--- Purpose: Manage objects
--- Author: Jeremy Kings
-
--- Dependencies
-require("gameObject") -- gameObjectMove, gameObjectDraw
-
-local manager = {}
-
--- Array of all objects in world
-manager.objects = {}
-
-function manager.add(go)
-	add(manager.objects, go)
-end
-
-function manager.update()
-	for go in all(manager.objects) do
-		gameObject.update(go, manager.objects)
-	end
-end
-
-function manager.draw()
-	foreach(manager.objects, gameObject.draw)
-end
-
-return manager
 end
 package._c["input"]=function()
 -- Filename: input.lua
@@ -512,7 +545,7 @@ local manager = require("manager") -- update, draw
 local input = require("input") -- keys
 local globals = require("globals") -- pixelsPerUnit, viewportWidth, mapWidth, mapHeight
 
-local playerStartX = 15
+local playerStartX = 15.5
 local playerStartY = 22
 local cursorStartX = 17
 local cursorStartY = 22
@@ -556,15 +589,16 @@ function fireballCreate(playerPosition, cursorPosition)
 		position = vec2:new(playerPosition.x, playerPosition.y), 
 		sprite = globals.sprites.fireball,
 		frameCount = 4,
+		bounce = 0.9,
 		gravity = 0.02,
-		inertia = 0.99,
 		--ghostObjects = true,
-		objectType = globals.objectTypes.fireballz
+		objectType = globals.objectTypes.fireball,
+		onUpdate = fireballUpdate
 	}
 	manager.add(fireball)
 
 	-- Initial velocity
-	local speed = 0.3
+	local speed = 0.35
 	local direction = cursorPosition:minus(playerPosition)
 	
 	-- Determine arc of fireball based on cursor and player
@@ -589,78 +623,84 @@ function fireballCreate(playerPosition, cursorPosition)
 end
 
 -- Animate fireball
-function fireballUpdate()
+function fireballUpdate(object)
 	local animTick = 5
-
-	for object in all(manager.objects) do
-		if object.objectType == globals.objectTypes.fireball then
-			-- ANIMATION
-			-- advance one frame every 3 ticks
-			if object.timer % 3 == 0 then
-				object.frameCurr += 1
-				object.frameCurr %= object.frameCount
-			end
-			
-			-- DEATH
-			if not isOnScreen(object) then
-				del(manager.objects, object)
-			end
-		end
+	
+	-- ANIMATION
+	-- advance one frame every 3 ticks
+	if object.timer % 3 == 0 then
+		object.frameCurr += 1
+		object.frameCurr %= object.frameCount
+	end
+	
+	-- DEATH
+	if not isOnScreen(object) then
+		del(manager.objects, object)
 	end
 end
 
 -- Player controller
-function playerUpdate()
+function playerUpdate(object)
 	-- MOVEMENT
 	-- How fast to pick up speed
-	local accel = 0.05
+	local accel = 0.02
 	-- Less control in air
-	if not player.grounded then 
+	if not object.grounded then 
 		accel *= 0.5 
 	end
 	
-	if input.isHeld(input.keyCodes.left) and cursor.position.x < player.position.x then 
-		player.velocity.x -= accel
-		player.flipX = true
-	elseif input.isHeld(input.keyCodes.right) and cursor.position.x > player.position.x then 
-		player.velocity.x += accel
-		player.flipX = false
-	else
-		player.velocity.x = 0
+	local allowedDistance = 0.75
+	local velocity = vec2:new(0,0)
+	if input.isHeld(input.keyCodes.left) and cursor.position.x < object.position.x 
+		and object.position.x - playerStartX > -allowedDistance * 0.9
+	then
+		velocity.x = object.velocity.x - accel
+		object.flipX = true
+	elseif input.isHeld(input.keyCodes.right) and cursor.position.x > object.position.x 
+		and object.position.x - playerStartX < allowedDistance
+	then 
+		velocity.x = object.velocity.x + accel
+		object.flipX = false
 	end
+	object.velocity = velocity
 	
 	-- jump
 	--[[local jump = -0.8
-	if input.isPressed(input.keyCodes.up) and player.grounded then 
-		player.velocity.y += jump
-		player.grounded = false
+	if input.isPressed(input.keyCodes.up) and object.grounded then 
+		object.velocity.y += jump
+		object.grounded = false
 	end]]--
+	
+	-- Constrain player position
+	
+	object.position.x = mid(playerStartX - allowedDistance, object.position.x, 
+		playerStartX + allowedDistance)
 	
 	-- ATTACKS
 	if input.isPressed(input.keyCodes.action1) then
-		fireballCreate(player.position, cursor.position)
+		fireballCreate(object.position, cursor.position)
 	end
 	
 	-- ANIMATION
-	if player.grounded then
+	if object.grounded then
 		-- Walking animation
 		-- advance one frame every 0.5 units
-		if abs(player.velocity.x) >= 0.07 then
-			player.frameCurr += abs(player.velocity.x) * 2
-			player.frameCurr %= player.frameCount
+		if abs(object.velocity.x) >= 0.03 then
+			object.frameCurr += abs(object.velocity.x) * 2
+			object.frameCurr %= object.frameCount
 		-- Idle animation (advance every 32 ticks)
-		elseif ((player.timer % 32) == 0) then
-			if(player.frameCurr == 0) then
-				player.frameCurr = 2
+		elseif ((object.timer % 32) == 0) then
+			if(object.frameCurr == 0) then
+				object.frameCurr = 2
 			else
-				player.frameCurr = 0
+				object.frameCurr = 0
 			end
 		end
 		
 		-- play a sound if moving
 		-- (every 8 ticks)
-		if abs(player.velocity.x) + abs(player.velocity.y) 
-				> 0.3 and (player.timer % 8) == 0 then
+		if abs(object.velocity.x) + abs(object.velocity.y) 
+				> 0.3 and (object.timer % 8) == 0 then
 			sfx(1)
 		end
 	end
@@ -671,7 +711,7 @@ local xMaxOffset = 4
 local yMinOffset = -4
 local yMaxOffset = 2
 
-function cursorUpdate()
+function cursorUpdate(object)
 	-- MOVEMENT
 	-- How fast to pick up speed
 	local speed = 0.3
@@ -689,23 +729,23 @@ function cursorUpdate()
 		direction.y += 1
 	end
 	
-	cursor.velocity = direction:normalized():times(speed)
+	object.velocity = direction:normalized():times(speed)
 	
 	-- ANIMATION
 	if input.isHeld(input.keyCodes.action1) then
-		cursor.frameCurr = 1
+		object.frameCurr = 1
 	else
-		cursor.frameCurr = 0
+		object.frameCurr = 0
 	end
 	
 	-- Update!
-	cursor:update()
+	object.position = object.position:plus(object.velocity)
 	
 	-- Clamp position to slightly less than map width
-	cursor.position.x = mid(globals.map.offsetX + xMinOffset, cursor.position.x, 
+	object.position.x = mid(globals.map.offsetX + xMinOffset, object.position.x, 
 		globals.map.offsetX + globals.map.width - xMaxOffset)
 	-- Allow for some breathing room at top of map, less at bottom
-	cursor.position.y = mid(globals.map.offsetY + yMinOffset, cursor.position.y, 
+	object.position.y = mid(globals.map.offsetY + yMinOffset, object.position.y, 
 		globals.map.offsetY + globals.map.height - yMaxOffset)
 end
 
@@ -741,9 +781,10 @@ function _init()
 	{
 		position = vec2:new(playerStartX, playerStartY), 
 		sprite = globals.sprites.player,
-		bounce = 0.1,
+		bounce = 0.0,
 		ghostObjects = true,
 		objectType = globals.objectTypes.player,
+		onUpdate = playerUpdate,
 	}
 	manager.add(player)
 	
@@ -755,6 +796,7 @@ function _init()
 		ghostMap = true,
 		ghostObjects = true,
 		gravity = 0,
+		onUpdate = cursorUpdate,
 	}
 	-- should be drawn on top of foreground, so don't let manager
 	-- update or draw the cursor
@@ -784,9 +826,7 @@ end
 -- Update
 function _update()
 	input.update()
-	playerUpdate()
-	cursorUpdate()
-	fireballUpdate()
+	cursor.onUpdate(cursor)
 	manager.update()
 end
 
@@ -1063,7 +1103,7 @@ __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000000000000010000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000020414100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000020320100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000030210200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

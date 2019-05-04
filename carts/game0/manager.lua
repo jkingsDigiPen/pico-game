@@ -4,6 +4,7 @@
 
 -- Dependencies
 require("gameObject") -- gameObjectMove, gameObjectDraw
+physics = require("physics") -- update
 
 local manager = {}
 
@@ -15,9 +16,8 @@ function manager.add(go)
 end
 
 function manager.update()
-	for go in all(manager.objects) do
-		gameObject.update(go, manager.objects)
-	end
+	foreach(manager.objects, gameObject.update)
+	physics.update(manager.objects)
 end
 
 function manager.draw()

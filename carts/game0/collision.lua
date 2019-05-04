@@ -1,5 +1,5 @@
 -- Filename: collision.lua
--- Purpose: Collision Detection, Resolution
+-- Purpose: Collision Detection
 -- Author: Jeremy Kings
 
 -- Dependencies
@@ -89,7 +89,7 @@ end
 -- check collision against all other objects
 function collision.checkObjectList(go1, moveAmount, objects)
 	for go2 in all(objects) do
-		if (go2 != go1) then
+		if (go2 != go1) and not go2.ghostObjects then
 			if collision.checkObject(go1, moveAmount, go2) then
 				return true
 			end
@@ -103,11 +103,11 @@ end
 function collision.checkAll(go, moveAmount, locations, objects)
 	local result = false
 
-	--if not go.ghostObjects then
-		--if collision.checkObjectList(go, moveAmount, objects) then
-			--result = true
-		--end
-	--end
+	if not go.ghostObjects then
+		if collision.checkObjectList(go, moveAmount, objects) then
+			result = true
+		end
+	end
 	
 	if not go.ghostMap then 
 		if collision.checkMapRect(go.position:plus(moveAmount), go.extents, locations) then

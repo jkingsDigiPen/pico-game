@@ -8,7 +8,7 @@ local manager = require("manager") -- update, draw
 local input = require("input") -- keys
 local globals = require("globals") -- pixelsPerUnit, viewportWidth, mapWidth, mapHeight
 
-local playerStartX = 15
+local playerStartX = 15.5
 local playerStartY = 22
 local cursorStartX = 17
 local cursorStartY = 22
@@ -52,15 +52,16 @@ function fireballCreate(playerPosition, cursorPosition)
 		position = vec2:new(playerPosition.x, playerPosition.y), 
 		sprite = globals.sprites.fireball,
 		frameCount = 4,
+		bounce = 0.9,
 		gravity = 0.02,
-		inertia = 0.99,
 		--ghostObjects = true,
-		objectType = globals.objectTypes.fireballz
+		objectType = globals.objectTypes.fireball,
+		onUpdate = fireballUpdate
 	}
 	manager.add(fireball)
 
 	-- Initial velocity
-	local speed = 0.3
+	local speed = 0.35
 	local direction = cursorPosition:minus(playerPosition)
 	
 	-- Determine arc of fireball based on cursor and player
@@ -85,78 +86,84 @@ function fireballCreate(playerPosition, cursorPosition)
 end
 
 -- Animate fireball
-function fireballUpdate()
+function fireballUpdate(object)
 	local animTick = 5
-
-	for object in all(manager.objects) do
-		if object.objectType == globals.objectTypes.fireball then
-			-- ANIMATION
-			-- advance one frame every 3 ticks
-			if object.timer % 3 == 0 then
-				object.frameCurr += 1
-				object.frameCurr %= object.frameCount
-			end
-			
-			-- DEATH
-			if not isOnScreen(object) then
-				del(manager.objects, object)
-			end
-		end
+	
+	-- ANIMATION
+	-- advance one frame every 3 ticks
+	if object.timer % 3 == 0 then
+		object.frameCurr += 1
+		object.frameCurr %= object.frameCount
+	end
+	
+	-- DEATH
+	if not isOnScreen(object) then
+		del(manager.objects, object)
 	end
 end
 
 -- Player controller
-function playerUpdate()
+function playerUpdate(object)
 	-- MOVEMENT
 	-- How fast to pick up speed
-	local accel = 0.05
+	local accel = 0.02
 	-- Less control in air
-	if not player.grounded then 
+	if not object.grounded then 
 		accel *= 0.5 
 	end
 	
-	if input.isHeld(input.keyCodes.left) and cursor.position.x < player.position.x then 
-		player.velocity.x -= accel
-		player.flipX = true
-	elseif input.isHeld(input.keyCodes.right) and cursor.position.x > player.position.x then 
-		player.velocity.x += accel
-		player.flipX = false
-	else
-		player.velocity.x = 0
+	local allowedDistance = 0.75
+	local velocity = vec2:new(0,0)
+	if input.isHeld(input.keyCodes.left) and cursor.position.x < object.position.x 
+		and object.position.x - playerStartX > -allowedDistance * 0.9
+	then
+		velocity.x = object.velocity.x - accel
+		object.flipX = true
+	elseif input.isHeld(input.keyCodes.right) and cursor.position.x > object.position.x 
+		and object.position.x - playerStartX < allowedDistance
+	then 
+		velocity.x = object.velocity.x + accel
+		object.flipX = false
 	end
+	object.velocity = velocity
 	
 	-- jump
 	--[[local jump = -0.8
-	if input.isPressed(input.keyCodes.up) and player.grounded then 
-		player.velocity.y += jump
-		player.grounded = false
+	if input.isPressed(input.keyCodes.up) and object.grounded then 
+		object.velocity.y += jump
+		object.grounded = false
 	end]]--
+	
+	-- Constrain player position
+	
+	object.position.x = mid(playerStartX - allowedDistance, object.position.x, 
+		playerStartX + allowedDistance)
 	
 	-- ATTACKS
 	if input.isPressed(input.keyCodes.action1) then
-		fireballCreate(player.position, cursor.position)
+		fireballCreate(object.position, cursor.position)
 	end
 	
 	-- ANIMATION
-	if player.grounded then
+	if object.grounded then
 		-- Walking animation
 		-- advance one frame every 0.5 units
-		if abs(player.velocity.x) >= 0.07 then
-			player.frameCurr += abs(player.velocity.x) * 2
-			player.frameCurr %= player.frameCount
+		if abs(object.velocity.x) >= 0.03 then
+			object.frameCurr += abs(object.velocity.x) * 2
+			object.frameCurr %= object.frameCount
 		-- Idle animation (advance every 32 ticks)
-		elseif ((player.timer % 32) == 0) then
-			if(player.frameCurr == 0) then
-				player.frameCurr = 2
+		elseif ((object.timer % 32) == 0) then
+			if(object.frameCurr == 0) then
+				object.frameCurr = 2
 			else
-				player.frameCurr = 0
+				object.frameCurr = 0
 			end
 		end
 		
 		-- play a sound if moving
 		-- (every 8 ticks)
-		if abs(player.velocity.x) + abs(player.velocity.y) 
-				> 0.3 and (player.timer % 8) == 0 then
+		if abs(object.velocity.x) + abs(object.velocity.y) 
+				> 0.3 and (object.timer % 8) == 0 then
 			sfx(1)
 		end
 	end
@@ -167,7 +174,7 @@ local xMaxOffset = 4
 local yMinOffset = -4
 local yMaxOffset = 2
 
-function cursorUpdate()
+function cursorUpdate(object)
 	-- MOVEMENT
 	-- How fast to pick up speed
 	local speed = 0.3
@@ -185,23 +192,23 @@ function cursorUpdate()
 		direction.y += 1
 	end
 	
-	cursor.velocity = direction:normalized():times(speed)
+	object.velocity = direction:normalized():times(speed)
 	
 	-- ANIMATION
 	if input.isHeld(input.keyCodes.action1) then
-		cursor.frameCurr = 1
+		object.frameCurr = 1
 	else
-		cursor.frameCurr = 0
+		object.frameCurr = 0
 	end
 	
 	-- Update!
-	cursor:update()
+	object.position = object.position:plus(object.velocity)
 	
 	-- Clamp position to slightly less than map width
-	cursor.position.x = mid(globals.map.offsetX + xMinOffset, cursor.position.x, 
+	object.position.x = mid(globals.map.offsetX + xMinOffset, object.position.x, 
 		globals.map.offsetX + globals.map.width - xMaxOffset)
 	-- Allow for some breathing room at top of map, less at bottom
-	cursor.position.y = mid(globals.map.offsetY + yMinOffset, cursor.position.y, 
+	object.position.y = mid(globals.map.offsetY + yMinOffset, object.position.y, 
 		globals.map.offsetY + globals.map.height - yMaxOffset)
 end
 
@@ -240,6 +247,7 @@ function _init()
 		bounce = 0.0,
 		ghostObjects = true,
 		objectType = globals.objectTypes.player,
+		onUpdate = playerUpdate,
 	}
 	manager.add(player)
 	
@@ -251,6 +259,7 @@ function _init()
 		ghostMap = true,
 		ghostObjects = true,
 		gravity = 0,
+		onUpdate = cursorUpdate,
 	}
 	-- should be drawn on top of foreground, so don't let manager
 	-- update or draw the cursor
@@ -280,9 +289,7 @@ end
 -- Update
 function _update()
 	input.update()
-	playerUpdate()
-	cursorUpdate()
-	fireballUpdate()
+	cursor.onUpdate(cursor)
 	manager.update()
 end
 
