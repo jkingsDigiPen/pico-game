@@ -12,12 +12,6 @@ local globals = {}
 globals.pixelsPerUnit = 8 -- Pixels per unit
 globals.viewportWidth = 128 -- Viewport width in pixels
 
--- Map
-globals.mapWidth = 32 -- Map width in units
-globals.mapHeight = 16 -- Map height in units
-globals.mapOffsetX = 0 -- Offset of map upper-left in units
-globals.mapOffsetY = 16 -- Offset of map upper-left in units
-
 -- Colors
 globals.colors =
 {
@@ -37,6 +31,36 @@ globals.colors =
 	purpleLight = 13,
 	pink = 14,
 	peach = 15,
+}
+
+-- Map
+globals.map =
+{
+	width = 32, -- Map width in units
+	height = 16, -- Map height in units
+	offsetX = 0, -- Offset of map upper-left in units
+	offsetY = 16, -- Offset of map upper-left in units
+}
+
+-- Sprites
+globals.sprites =
+{
+	player = 17,
+	cursor = 70,
+	fireball = 53,
+	lightning = 0,
+	goblin = 0,
+	imp = 0,
+}
+
+-- Objects
+globals.objectTypes =
+{
+	player = 1,
+	fireball = 2,
+	lightning = 3,
+	goblin = 4,
+	imp = 5,
 }
 
 return globals

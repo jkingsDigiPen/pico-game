@@ -101,16 +101,21 @@ end
 
 -- check map and object collisions
 function collision.checkAll(go, moveAmount, locations, objects)
+	local result = false
+
+	--if not go.ghostObjects then
+		--if collision.checkObjectList(go, moveAmount, objects) then
+			--result = true
+		--end
+	--end
+	
 	if not go.ghostMap then 
 		if collision.checkMapRect(go.position:plus(moveAmount), go.extents, locations) then
-			return true 
+			result = true
 		end
 	end
 	
-	if not go.ghostObjects then
-		return collision.checkObjectList(go, moveAmount, objects)
-	end
-	return false
+	return result
 end
 
 return collision

@@ -34,10 +34,13 @@ gameObject =
 		right = false,
 	},
 	grounded = false,
-	t = 0,
 	bounce = 0.8,
 	ghostMap = false,
 	ghostObjects = false,
+	
+	-- behavior
+	objectType = 0,
+	timer = 0,
 }
 
 -- Constructor
@@ -52,15 +55,13 @@ end
 function gameObject:update(objects)
 	
 	-- MOVEMENT
-	if not self.ghostMap and self.ghostObjects then
-		self:checkCollisions(objects)
-	else
+	if not self:checkCollisions(objects) then
 		self.position = self.position:plus(self.velocity)
 	end
 	
 	-- FORCES
 	-- Gravity
-	self.velocity.y += self.gravity
+	--self.velocity.y += self.gravity
 	
 	if not self.grounded then
 		-- Inertia
@@ -71,7 +72,7 @@ function gameObject:update(objects)
 	end
 	
 	-- Timer???
-	self.t += 1
+	self.timer += 1
 	
 end
 
@@ -127,7 +128,7 @@ function gameObject:checkCollisions(objects)
 	end
 
 	-- Ditto for y
-	local velocityY = vec2:new(0, self.velocity.y)
+	--[[local velocityY = vec2:new(0, self.velocity.y)
 	if collision.checkAll(self, velocityY, locations, objects) then
 		if self.velocity.y < 0 then
 			self.flags.top = true
@@ -139,8 +140,8 @@ function gameObject:checkCollisions(objects)
 		end
 	
 		self.velocity.y *= -self.bounce
-	else
+	else]]--
 		-- Move y as normal
-		self.position.y += self.velocity.y
+		--self.position.y += self.velocity.y
 	end
 end
