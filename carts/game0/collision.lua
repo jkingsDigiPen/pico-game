@@ -89,10 +89,9 @@ end
 -- check collision against all other objects
 function collision.checkObjectList(go1, moveAmount, objects)
 	for go2 in all(objects) do
-		if (go2 != go1) and not go2.ghostObjects then
-			if collision.checkObject(go1, moveAmount, go2) then
-				return true
-			end
+		if not go2.ghostObjects and not go2 == go1 and not go2.objectType == go1.objectType 
+		then
+			if collision.checkObject(go1, moveAmount, go2) then return true end
 		end
 	end
 	
